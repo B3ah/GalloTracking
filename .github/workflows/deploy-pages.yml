@@ -23,6 +23,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Restaurar dependências
+        run: dotnet restore GalloTracking.sln
+      - name: Executar testes
+        run: dotnet test GalloTracking.sln --no-restore --configuration Release
+      - name: Compilar aplicação
+        run: dotnet build GalloTracking.sln --no-restore --configuration Release --no-incremental
       - name: Configurar Pages
         uses: actions/configure-pages@v5
       - name: Publicar arquivos estáticos
@@ -32,3 +42,8 @@ jobs:
       - name: Fazer deploy
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Remover arquivos temporários
+        if: always()
+        shell: bash
+        run: |
+          find . -type d \( -name bin -o -name obj -o -name TestResults -o -name coverage \) -prune -exec rm -rf {} +

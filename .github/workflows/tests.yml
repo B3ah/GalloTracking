@@ -29,8 +29,8 @@ jobs:
           test -n "$report"
           rate=$(sed -n 's/.*line-rate="\([0-9.]*\)".*/\1/p' "$report" | head -n 1)
           awk -v rate="$rate" 'BEGIN { if (rate < 0.90) exit 1 }'
-      - name: Publicar relatório de cobertura
-        uses: actions/upload-artifact@v4
-        with:
-          name: cobertura
-          path: '**/TestResults/**/coverage.*.xml'
+      - name: Remover arquivos temporários e cobertura
+        if: always()
+        shell: bash
+        run: |
+          find . -type d \( -name bin -o -name obj -o -name TestResults -o -name coverage \) -prune -exec rm -rf {} +
