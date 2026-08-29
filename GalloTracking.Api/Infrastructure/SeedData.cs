@@ -9,6 +9,11 @@ public static class SeedData
     public static async Task InitializeAsync(IServiceProvider services)
     {
         var db = services.GetRequiredService<AppDbContext>();
+        var environment = services.GetRequiredService<IHostEnvironment>();
+
+        if (environment.IsDevelopment() && db.Database.IsSqlite() && await IsLegacyDatabaseAsync(db))
+            await db.Database.EnsureDeletedAsync();
+
         await db.Database.MigrateAsync();
         if (await db.Usuarios.AnyAsync()) return;
         var hasher = new PasswordHasher<Usuario>();
@@ -21,5 +26,15 @@ public static class SeedData
         rota.Entregas.Add(new Entrega { Destinatario = "Cliente Demo", Endereco = "Av. Brasil, 100", Status = StatusEntrega.Pendente });
         db.AddRange(gestor, motoristaUsuario, motorista, rota);
         await db.SaveChangesAsync();
+    }
+
+    private static async Task<bool> IsLegacyDatabaseAsync(AppDbContext db)
+    {
+        await using var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('Usuarios', '__EFMigrationsHistory')";
+        var tables = Convert.ToInt32(await command.ExecuteScalarAsync());
+        return tables == 1;
     }
 }
