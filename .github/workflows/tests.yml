@@ -1,0 +1,29 @@
+name: Testes e cobertura
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Restaurar dependências
+        run: dotnet restore GalloTracking.sln
+      - name: Executar testes com cobertura
+        run: dotnet test GalloTracking.sln --no-restore --settings coverage.runsettings --collect:"XPlat Code Coverage"
+      - name: Publicar relatório de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: '**/TestResults/**/coverage.*.xml'

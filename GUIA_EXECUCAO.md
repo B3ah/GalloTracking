@@ -76,6 +76,14 @@ dotnet test GalloTracking.sln
 
 Os testes usam bancos SQLite temporários e validam login, ciclo da rota e bloqueio de localização fora de uma rota ativa.
 
+## Executar testes com cobertura
+
+```bash
+dotnet test GalloTracking.sln --settings coverage.runsettings --collect:"XPlat Code Coverage"
+```
+
+Os relatórios `coverage.cobertura.xml` e `coverage.opencover.xml` são gerados dentro de `TestResults`. A configuração exclui o projeto de testes do cálculo.
+
 ## Persistência
 
 O banco inicial utiliza SQLite e é configurado em `GalloTracking.Api/appsettings.json`.
