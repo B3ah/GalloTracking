@@ -51,6 +51,7 @@ public class Localizacao
     public int RotaId { get; set; }
     public Rota Rota { get; set; } = null!;
     public int MotoristaId { get; set; }
+    public string IdLocal { get; set; } = "";
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public double Velocidade { get; set; }

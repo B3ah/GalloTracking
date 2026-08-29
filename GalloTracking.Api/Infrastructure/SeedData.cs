@@ -9,7 +9,7 @@ public static class SeedData
     public static async Task InitializeAsync(IServiceProvider services)
     {
         var db = services.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await db.Database.MigrateAsync();
         if (await db.Usuarios.AnyAsync()) return;
         var hasher = new PasswordHasher<Usuario>();
         var gestor = new Usuario { Nome = "Gestor Demo", Email = "gestor@gallo.local", Perfil = PerfilUsuario.Gestor };

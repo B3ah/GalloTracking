@@ -4,6 +4,7 @@
 
 # Local .NET CLI/template cache
 .dotnet-cli/
+.tools/
 
 # Visual Studio / Rider / VS Code
 .vs/

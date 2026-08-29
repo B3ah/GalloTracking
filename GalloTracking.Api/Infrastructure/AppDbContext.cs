@@ -21,5 +21,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         model.Entity<Rota>().HasOne(x => x.Motorista).WithMany(x => x.Rotas).HasForeignKey(x => x.MotoristaId);
         model.Entity<Entrega>().HasOne(x => x.Rota).WithMany(x => x.Entregas).HasForeignKey(x => x.RotaId);
         model.Entity<Localizacao>().HasOne(x => x.Rota).WithMany(x => x.Localizacoes).HasForeignKey(x => x.RotaId);
+        model.Entity<Localizacao>().HasIndex(x => new { x.MotoristaId, x.IdLocal }).IsUnique();
     }
 }

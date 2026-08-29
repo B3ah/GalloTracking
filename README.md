@@ -506,6 +506,7 @@ A API será organizada por recursos.
 ```json
 {
   "rotaId": 25,
+  "idLocal": "device-abc-000001",
   "latitude": -22.5231,
   "longitude": -48.5572,
   "velocidade": 72,
@@ -617,7 +618,7 @@ Essas tecnologias poderão ser alteradas conforme a decisão da equipe, sem modi
 
 # 19. API Mockada
 
-O protótipo funcional da API está em `GalloTracking.Api` e utiliza SQLite para persistência inicial. A estrutura usa Entity Framework Core, permitindo trocar o provider por PostgreSQL posteriormente sem alterar os controllers.
+O protótipo funcional da API está em `GalloTracking.Api` e utiliza SQLite para persistência inicial. A estrutura usa Entity Framework Core e migrations, permitindo trocar o provider por PostgreSQL posteriormente sem alterar os controllers.
 
 ## Execução local
 
@@ -635,7 +636,9 @@ Credenciais de desenvolvimento:
 | Gestor | gestor@gallo.local | gallo123 |
 | Motorista | motorista@gallo.local | gallo123 |
 
-O fluxo recomendado é fazer login, iniciar a rota criada pelo seed, enviar uma localização e consultar o histórico. Localizações só são aceitas enquanto a rota estiver com status `Ativa`; o endpoint `/api/localizacoes/batch` simula a sincronização do modo offline.
+O fluxo recomendado é fazer login, iniciar a rota criada pelo seed, enviar uma localização e consultar o histórico. Localizações só são aceitas enquanto a rota estiver com status `Ativa`, são restritas ao motorista dono da rota e exigem um `idLocal` para idempotência. O endpoint `/api/localizacoes/batch` simula a sincronização do modo offline e aceita até 500 pontos por lote.
+
+Gestores administram rotas e entregas; motoristas enviam localizações apenas para suas próprias rotas. As respostas da API usam DTOs e erros de validação seguem o formato Problem Details. Para visualizar a arquitetura, os fluxos de código e as rotas em formato de apresentação, acesse [`docs/arquitetura.html`](docs/arquitetura.html).
 
 O hub SignalR está disponível em `/hubs/localizacao`. Clientes autenticados podem chamar `EntrarNaRota(rotaId)` e recebem o evento `novaLocalizacao` quando uma coordenada da rota for salva.
 
@@ -644,6 +647,8 @@ Os testes de integração podem ser executados com:
 ```bash
 dotnet test GalloTracking.sln
 ```
+
+O CI executa os testes com cobertura e falha quando a cobertura de linhas fica abaixo de 90%. O guia detalhado de execução, migrations e credenciais está em [`GUIA_EXECUCAO.md`](GUIA_EXECUCAO.md).
 
 ---
 

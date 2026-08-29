@@ -12,8 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TrackingService>();
+builder.Services.AddScoped<AccessService>();
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR();
+builder.Services.AddProblemDetails();
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key não configurada.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
@@ -27,6 +29,7 @@ builder.Services.AddSwaggerGen(options => { options.SwaggerDoc("v1", new OpenApi
 var app = builder.Build();
 using (var scope = app.Services.CreateScope()) await SeedData.InitializeAsync(scope.ServiceProvider);
 if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
+app.UseExceptionHandler();
 app.UseHttpsRedirection(); app.UseAuthentication(); app.UseAuthorization();
 app.MapControllers(); app.MapHub<LocalizacaoHub>("/hubs/localizacao");
 app.Run();

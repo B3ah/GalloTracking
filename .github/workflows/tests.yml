@@ -22,6 +22,13 @@ jobs:
         run: dotnet restore GalloTracking.sln
       - name: Executar testes com cobertura
         run: dotnet test GalloTracking.sln --no-restore --settings coverage.runsettings --collect:"XPlat Code Coverage"
+      - name: Validar cobertura mínima
+        shell: bash
+        run: |
+          report=$(find . -path '*/TestResults/*/coverage.cobertura.xml' -print -quit)
+          test -n "$report"
+          rate=$(sed -n 's/.*line-rate="\([0-9.]*\)".*/\1/p' "$report" | head -n 1)
+          awk -v rate="$rate" 'BEGIN { if (rate < 0.90) exit 1 }'
       - name: Publicar relatório de cobertura
         uses: actions/upload-artifact@v4
         with:

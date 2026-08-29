@@ -56,11 +56,18 @@ Essas credenciais existem apenas para desenvolvimento.
 
 Localizações só são aceitas enquanto a rota estiver com status `Ativa`.
 
+O envio de localização exige perfil `Motorista` e a rota precisa pertencer ao motorista autenticado. Gestores podem consultar todas as rotas, mas não enviam coordenadas.
+
+Cada coordenada precisa de um `idLocal` único gerado pelo dispositivo. Se o mesmo ponto for reenviado, a API o identifica como duplicado e não cria outro registro.
+
 ## Sincronização offline
 
 Use `POST /api/localizacoes/batch` para simular o envio de coordenadas armazenadas no celular quando a conexão retornar.
 
 Todas as rotas informadas precisam estar ativas para que o lote seja persistido.
+
+
+O batch aceita de 1 a 500 pontos. A resposta informa quantos foram processados e quantos já existiam.
 
 ## Comunicação em tempo real
 
@@ -89,3 +96,7 @@ Os relatórios `coverage.cobertura.xml` e `coverage.opencover.xml` são gerados 
 O banco inicial utiliza SQLite e é configurado em `GalloTracking.Api/appsettings.json`.
 
 A conexão está isolada no Entity Framework Core. Para uma futura migração para PostgreSQL, será necessário trocar o provider e a connection string.
+
+As migrations ficam em `GalloTracking.Api/Infrastructure/Migrations` e são aplicadas automaticamente na inicialização.
+
+As migrations ficam em `GalloTracking.Api/Infrastructure/Migrations` e são aplicadas automaticamente na inicialização.

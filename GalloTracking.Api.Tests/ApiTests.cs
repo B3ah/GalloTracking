@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace GalloTracking.Api.Tests;
@@ -27,7 +29,7 @@ public class ApiTests
     [Fact]
     public async Task Ciclo_da_rota_rejeita_transicoes_invalidas()
     {
-        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "motorista@gallo.local");
+        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "gestor@gallo.local");
         var route = (await client.GetFromJsonAsync<List<RouteResult>>("/api/rotas"))!.Single();
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync($"/api/rotas/{route.Id}/finalizar", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/rotas/{route.Id}/iniciar", null)).StatusCode);
@@ -44,6 +46,8 @@ public class ApiTests
         var planned = await client.GetFromJsonAsync<List<RouteResult>>("/api/rotas?status=Planejada");
         Assert.Contains(planned!, route => route.Status == "Planejada");
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/rotas/99999")).StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await LoginAsync(factory, "motorista@gallo.local")).Token);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/rotas", new { motoristaId = 1 })).StatusCode);
     }
 
     [Fact]
@@ -64,35 +68,57 @@ public class ApiTests
     {
         using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "motorista@gallo.local");
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/rotas/1/iniciar", null)).StatusCode);
-        var first = new { rotaId = 1, latitude = -22.5, longitude = -48.5, velocidade = 40, precisao = 5, timestampGps = DateTime.UtcNow.AddMinutes(-2) };
+        var first = new { rotaId = 1, latitude = -22.5, longitude = -48.5, velocidade = 40, precisao = 5, idLocal = "test-001", timestampGps = DateTime.UtcNow.AddMinutes(-2) };
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/localizacoes", first)).StatusCode);
-        var batch = new[] { new { rotaId = 1, latitude = -22.51, longitude = -48.51, velocidade = 41, precisao = 5, timestampGps = DateTime.UtcNow } };
+        var duplicate = await client.PostAsJsonAsync("/api/localizacoes", first);
+        Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
+        Assert.Contains("duplicada", await duplicate.Content.ReadAsStringAsync());
+        var batch = new[] { new { rotaId = 1, latitude = -22.51, longitude = -48.51, velocidade = 41, precisao = 5, idLocal = "test-002", timestampGps = DateTime.UtcNow } };
         var batchResponse = await client.PostAsJsonAsync("/api/localizacoes/batch", batch);
         Assert.Equal(HttpStatusCode.OK, batchResponse.StatusCode);
         var history = await client.GetFromJsonAsync<List<LocationResult>>("/api/rotas/1/localizacoes");
         Assert.Equal(2, history!.Count);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/rotas/1/ultima-localizacao")).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/localizacoes/batch", new[] { new { rotaId = 999, latitude = 0d, longitude = 0d, velocidade = 0d, precisao = 0d, timestampGps = DateTime.UtcNow } })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/localizacoes/batch", new[] { new { rotaId = 999, latitude = 0d, longitude = 0d, velocidade = 0d, precisao = 0d, idLocal = "test-003", timestampGps = DateTime.UtcNow } })).StatusCode);
     }
 
     [Fact]
     public async Task Localizacao_em_rota_finalizada_e_rejeitada()
     {
-        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "gestor@gallo.local");
+        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "motorista@gallo.local");
         await client.PostAsync("/api/rotas/1/iniciar", null); await client.PostAsync("/api/rotas/1/finalizar", null);
-        var response = await client.PostAsJsonAsync("/api/localizacoes", new { rotaId = 1, latitude = 0d, longitude = 0d, velocidade = 0d, precisao = 1d, timestampGps = DateTime.UtcNow });
+        var response = await client.PostAsJsonAsync("/api/localizacoes", new { rotaId = 1, latitude = 0d, longitude = 0d, velocidade = 0d, precisao = 1d, idLocal = "test-finalized", timestampGps = DateTime.UtcNow });
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/rotas/1/ultima-localizacao")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Dados_de_rota_nao_expoem_hash_de_senha()
+    {
+        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "gestor@gallo.local");
+        var response = await client.GetAsync("/api/rotas/1"); var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode); Assert.DoesNotContain("SenhaHash", body); Assert.DoesNotContain("senhaHash", body);
+    }
+
+    [Fact]
+    public async Task Coordenadas_invalidas_sao_rejeitadas()
+    {
+        using var factory = new ApiFactory(); using var client = await AuthenticatedClient(factory, "motorista@gallo.local");
+        var response = await client.PostAsJsonAsync("/api/localizacoes", new { rotaId = 1, latitude = 100d, longitude = 200d, velocidade = -1d, precisao = 1d, idLocal = "invalid", timestampGps = DateTime.UtcNow });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static async Task<HttpClient> AuthenticatedClient(ApiFactory factory, string email)
     {
         var client = factory.CreateClient();
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { email, senha = "gallo123" });
-        login.EnsureSuccessStatusCode();
-        var result = (await login.Content.ReadFromJsonAsync<LoginResult>())!;
+        var result = await LoginAsync(factory, email);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Token);
         return client;
+    }
+
+    private static async Task<LoginResult> LoginAsync(ApiFactory factory, string email)
+    {
+        using var client = factory.CreateClient(); var login = await client.PostAsJsonAsync("/api/auth/login", new { email, senha = "gallo123" }); login.EnsureSuccessStatusCode(); return (await login.Content.ReadFromJsonAsync<LoginResult>())!;
     }
 
     private sealed record LoginResult(string Token);
@@ -108,6 +134,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:DefaultConnection", $"Data Source={database}");
+        builder.ConfigureServices(services => services.AddDataProtection().UseEphemeralDataProtectionProvider());
         builder.ConfigureLogging(logging => logging.ClearProviders());
     }
 }
