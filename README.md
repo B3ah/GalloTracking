@@ -3,7 +3,6 @@
 ## Sistema de Rastreamento Logístico em Tempo Real
 
 ### 1. Introdução
-
 ## Navegação rápida
 
 - [Visão geral da arquitetura](#3-visão-geral-da-arquitetura)
@@ -16,6 +15,8 @@
 - [Apresentação dos diagramas](docs/arquitetura.html)
 
 Os diagramas e fluxos visuais foram movidos para uma apresentação HTML independente. Ela funciona no navegador e não depende do suporte do preview do GitHub a SVG inline.
+
+Após a execução do workflow, a apresentação ficará disponível em [Gallo Tracking no GitHub Pages](https://b3ah.github.io/GalloTracking/).
 
 Este documento apresenta a arquitetura proposta para o sistema de rastreamento logístico desenvolvido para empresas de transporte e logística. O objetivo do projeto é permitir que gestores acompanhem, em tempo real, a localização dos caminhoneiros durante a execução de uma rota utilizando apenas o smartphone do motorista, sem a necessidade de instalar rastreadores físicos nos veículos.
 
