@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gallo Tracking — Arquitetura</title>
+  <style>
+    :root { --ink:#172033; --muted:#64748b; --blue:#2563eb; --green:#059669; --purple:#7c3aed; --card:#fff; --bg:#eef3f8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); font-family:Inter,Segoe UI,Arial,sans-serif; background:linear-gradient(135deg,#e8f0fe,var(--bg)); display:grid; place-items:center; }
+    .deck { width:min(1100px,94vw); }
+    .slide { display:none; min-height:620px; padding:48px 58px; background:rgba(255,255,255,.94); border:1px solid #d8e0ea; border-radius:24px; box-shadow:0 20px 60px #1e293b20; }
+    .slide.active { display:block; animation:enter .25s ease-out; }
+    @keyframes enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    h1 { margin:0 0 12px; font-size:clamp(2rem,4vw,3.4rem); } h2 { margin:0 0 10px; font-size:clamp(1.6rem,3vw,2.5rem); } p { color:var(--muted); line-height:1.65; max-width:760px; }
+    .eyebrow { color:var(--blue); font-size:.8rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    .diagram { margin:36px auto 18px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }
+    .node { min-width:145px; padding:18px 16px; text-align:center; border:2px solid #94a3b8; border-radius:14px; background:var(--card); box-shadow:0 5px 14px #33415516; font-weight:700; }
+    .node small { display:block; margin-top:7px; color:var(--muted); font-size:.75rem; font-weight:500; }
+    .driver { background:#e8f0fe; border-color:#7aa7ff; } .server { background:#f3f4f6; border-color:#6b7280; } .web { background:#fce7f3; border-color:#f472b6; } .db { background:#d1fae5; border-color:#34d399; } .warn { background:#fef3c7; border-color:#f59e0b; }
+    .arrow { color:var(--blue); font-size:1.7rem; font-weight:800; } .arrow span { display:block; color:var(--muted); font-size:.7rem; text-align:center; }
+    .stack { display:grid; gap:10px; max-width:480px; margin:32px auto; } .stack .node { min-width:0; }
+    .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; max-width:800px; margin:35px auto; align-items:center; } .flow .node { min-width:0; }
+    .columns { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin-top:30px; } .columns .node { text-align:left; }
+    .controls { display:flex; justify-content:space-between; align-items:center; margin-top:18px; color:var(--muted); } button { border:0; border-radius:9px; padding:10px 15px; background:var(--ink); color:white; cursor:pointer; } button:disabled { opacity:.35; cursor:default; }
+    @media (max-width:700px) { .slide { min-height:590px; padding:30px 24px; } .flow,.columns { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <section class="slide active"><div class="eyebrow">Gallo Tracking · 01</div><h1>Arquitetura do sistema</h1><p>Visão resumida do aplicativo do motorista, back-end central, painel web e persistência dos dados.</p><div class="diagram"><div class="node driver">App Motorista<small>GPS · SQLite offline</small></div><div class="arrow">→<span>HTTPS</span></div><div class="node server">Back-end<small>REST · regras · SignalR</small></div><div class="arrow">→<span>HTTPS / WebSocket</span></div><div class="node web">Painel Web<small>mapa e gestor</small></div></div><div class="diagram"><div class="node db">SQLite / PostgreSQL<small>rotas · entregas · localizações</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 02</div><h2>Organização interna do back-end</h2><p>O monólito é modular: cada camada tem uma responsabilidade clara e pode evoluir sem espalhar regras pela aplicação.</p><div class="stack"><div class="node driver">API Controllers<small>autenticação · rotas · entregas · localização</small></div><div class="arrow">↓</div><div class="node server">Services<small>regras de negócio e validações</small></div><div class="arrow">↓</div><div class="node db">Infrastructure<small>EF Core · SQLite · APIs externas</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 03</div><h2>Comunicação REST</h2><p>Operações convencionais usam HTTP: o aplicativo envia dados, a API valida e persiste, e responde ao cliente.</p><div class="flow"><div class="node driver">Aplicativo<small>requisição HTTPS</small></div><div class="arrow">→<span>REST</span></div><div class="node server">API<small>validar e salvar</small></div><div></div><div class="arrow">↓</div><div class="node db">Banco<small>resposta de sucesso</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 04</div><h2>Localização em tempo real</h2><p>A localização passa primeiro pelo back-end. Só depois de validada e salva é distribuída ao painel.</p><div class="diagram"><div class="node driver">Motorista<small>envia GPS por REST</small></div><div class="arrow">→</div><div class="node server">Back-end<small>valida e persiste</small></div><div class="arrow">→<span>SignalR</span></div><div class="node web">Painel Web<small>atualiza marcador</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 05</div><h2>Grupos por rota</h2><p>Cada rota possui um grupo SignalR. Gestores recebem somente os eventos da rota que estão acompanhando.</p><div class="columns"><div class="node web">Gestores<small>entram no grupo rota-25</small></div><div class="node server">Grupo Rota 25<small>novaLocalizacao</small></div><div class="node driver">Motorista<small>envia localização</small></div><div class="node db">Outras rotas<small>não recebem o evento</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 06</div><h2>Modo offline</h2><p>O aplicativo usa Store-and-Forward para não perder coordenadas quando o motorista está sem internet.</p><div class="diagram"><div class="node driver">GPS<small>captura coordenadas</small></div><div class="arrow">→</div><div class="node warn">Sem internet?<small>sim → SQLite local</small></div><div class="arrow">→</div><div class="node server">Sincronização<small>envio batch ao voltar</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 07</div><h2>Relacionamento entre entidades</h2><p>Os dados principais formam uma cadeia simples de responsabilidades.</p><div class="diagram"><div class="node driver">Usuário<small>1:1</small></div><div class="arrow">→</div><div class="node driver">Motorista<small>1:N</small></div><div class="arrow">→</div><div class="node server">Rota<small>1:N</small></div></div><div class="diagram"><div class="node warn">Entrega<small>várias por rota</small></div><div class="node db">Localização<small>histórico GPS</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 08</div><h2>Estados da rota</h2><p>O GPS só é aceito durante o estado ativo, protegendo a privacidade do motorista.</p><div class="diagram"><div class="node">Planejada<small>sem rastreamento</small></div><div class="arrow">→</div><div class="node db">Ativa<small>GPS permitido</small></div><div class="arrow">→</div><div class="node warn">Finalizada<small>rastreamento encerrado</small></div></div></section>
+    <section class="slide"><div class="eyebrow">Gallo Tracking · 09</div><h2>Fluxo completo</h2><p>O caminho completo combina GPS, decisão de conectividade, persistência, sincronização e atualização do painel.</p><div class="stack"><div class="node driver">Iniciar rota → capturar GPS</div><div class="node warn">Offline → guardar SQLite<br>Online → enviar REST</div><div class="node server">Back-end valida rota ativa</div><div class="node db">Salvar histórico → publicar SignalR</div><div class="node web">Painel atualiza o mapa</div></div></section>
+    <div class="controls"><button id="prev">Anterior</button><span id="counter">1 / 9</span><button id="next">Próximo</button></div>
+  </main>
+  <script>
+    const slides = [...document.querySelectorAll('.slide')]; let current = 0;
+    const counter = document.querySelector('#counter'); const prev = document.querySelector('#prev'); const next = document.querySelector('#next');
+    function show(index) { current = Math.max(0, Math.min(index, slides.length - 1)); slides.forEach((slide, i) => slide.classList.toggle('active', i === current)); counter.textContent = `${current + 1} / ${slides.length}`; prev.disabled = current === 0; next.disabled = current === slides.length - 1; history.replaceState(null, '', `#slide-${current + 1}`); }
+    prev.onclick = () => show(current - 1); next.onclick = () => show(current + 1);
+    document.addEventListener('keydown', event => { if (event.key === 'ArrowLeft') show(current - 1); if (event.key === 'ArrowRight' || event.key === ' ') show(current + 1); });
+    const initial = Number(location.hash.replace('#slide-', '')); show(initial > 0 ? initial - 1 : 0);
+  </script>
+</body>
+</html>
