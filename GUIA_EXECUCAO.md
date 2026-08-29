@@ -23,6 +23,8 @@ dotnet run --project GalloTracking.Api
 
 O terminal exibirá as URLs HTTP e HTTPS disponíveis. O banco SQLite `gallo.db` será criado automaticamente na primeira execução, junto com os dados de demonstração.
 
+Se você já executou uma versão anterior e receber erro informando que a tabela `Usuarios` já existe, encerre a API e remova o arquivo local `gallo.db`. A versão atual usa migrations; em ambiente de desenvolvimento ela também identifica esse banco legado e o recria automaticamente.
+
 ## Acessar o Swagger
 
 Abra no navegador:
