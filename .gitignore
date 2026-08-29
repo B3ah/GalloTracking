@@ -1,0 +1,41 @@
+# Build output
+**/bin/
+**/obj/
+
+# Local .NET CLI/template cache
+.dotnet-cli/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+
+# Test and coverage output
+TestResults/
+coverage/
+*.trx
+
+# Local databases and runtime files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Local configuration and secrets
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+*.pfx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
